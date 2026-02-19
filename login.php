@@ -2,7 +2,6 @@
 session_start();
 require 'db.php';
 
-
 if (isset($_SESSION['user_id'])) {
     if ($_SESSION['role'] === 'Officer') {
         header("Location: db_officer.php");
@@ -20,14 +19,11 @@ if (isset($_POST['login'])) {
     $input_email = trim($_POST['username']);
     $input_password = $_POST['password'];
 
-
     $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
     $stmt->execute([$input_email]);
     $user = $stmt->fetch();
 
-
     if ($user && password_verify($input_password, $user['password'])) {
-
 
         $_SESSION['user_id'] = $user['userId'];
         $_SESSION['role'] = $user['role'];
@@ -62,23 +58,23 @@ if (isset($_POST['login'])) {
 
     <div class="login-card text-center">
         <img src="deped_rov.jpg" alt="DepEd Logo" class="deped-logo">
-        <h4 class="fw-bold mb-1" style="color: #003366;">ICT Helpdesk</h4>
+        <h4 class="fw-bold mb-1" style="color: var(--deped-green, #1b5e20);">ICT Helpdesk</h4>
         <p class="text-muted small mb-4">Regional Office V - Rawis, Legazpi</p>
 
         <?php if ($error_message): ?>
-            <div class="alert alert-danger py-2 small"><?php echo $error_message; ?></div>
+            <div class="alert alert-danger py-2 small fw-bold"><?php echo $error_message; ?></div>
         <?php endif; ?>
 
         <form action="" method="POST">
             <div class="mb-3 text-start">
-                <label class="form-label small fw-bold text-secondary">Email Address</label>
+                <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Email Address</label>
                 <input type="email" name="username" class="form-control" placeholder="Enter DepEd email" required>
             </div>
             <div class="mb-4 text-start">
-                <label class="form-label small fw-bold text-secondary">Password</label>
+                <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Password</label>
                 <input type="password" name="password" class="form-control" placeholder="Enter password" required>
             </div>
-            <button type="submit" name="login" class="btn btn-deped w-100">SIGN IN</button>
+            <button type="submit" name="login" class="btn btn-deped w-100 shadow-sm">SIGN IN</button>
         </form>
     </div>
 

@@ -2,7 +2,7 @@
 $currentPage = basename($_SERVER['PHP_SELF']);
 ?>
 
-<div class="d-flex flex-column p-3 text-white h-100 shadow" style="background-color: #28282B; min-height: 100vh;">
+<div class="sidebar d-flex flex-column p-3 text-white h-100 shadow">
 
     <a href="db_user.php" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
         <img src="deped_rov.jpg" alt="DepEd Logo" class="me-3 rounded-circle shadow-sm" style="width: 50px; height: 50px; object-fit: cover; border: 2px solid white;">
@@ -38,7 +38,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         </li>
 
         <li class="nav-item mb-2">
-            <a href="request_account.php" class="nav-link d-flex align-items-center <?php echo $currentPage == 'request_account.php' ? 'active-sidebar' : 'text-white'; ?>">
+            <a href="borrow_starlink.php" class="nav-link d-flex align-items-center <?php echo $currentPage == 'borrow_starlink.php' ? 'active-sidebar' : 'text-white'; ?>">
                 <i class="bi bi-box-seam me-3 fs-5"></i>
                 Borrow Starlink
             </a>
