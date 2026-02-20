@@ -1,4 +1,8 @@
 <?php
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache"); 
+
 session_start();
 require 'db.php';
 
@@ -9,11 +13,11 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'User') {
 
 $userId = $_SESSION['user_id'];
 
-// Fetch Statistics
-$statStmt = $pdo->prepare("SELECT 
-    SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as p,
-    SUM(CASE WHEN status = 'Processing' THEN 1 ELSE 0 END) as pr,
-    SUM(CASE WHEN status IN ('Resolved', 'Closed') THEN 1 ELSE 0 END) as r
+// Fetch Statisticsd
+$statStmt = $pdo->prepare("SELECT
+    SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending_count,
+    SUM(CASE WHEN status = 'Processing' THEN 1 ELSE 0 END) as processing_count,
+    SUM(CASE WHEN status = 'Completed' OR status = 'Closed' THEN 1 ELSE 0 END) as completed_count
     FROM ticket WHERE userId = ?");
 $statStmt->execute([$userId]);
 $stats = $statStmt->fetch();
@@ -76,6 +80,88 @@ $stats = $statStmt->fetch();
                         <div class="d-flex justify-content-between">
                             <h6 class="text-muted fw-bold small">RESOLVED</h6>
                             <i class="bi bi-check-circle-fill text-success fs-4"></i>
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold text-success"><i class="bi bi-clock-history me-2"></i>My Ticket History</h5>
+                        <a href="create_ticket.php" class="btn btn-deped btn-sm fw-bold"><i class="bi bi-plus-lg"></i> New Ticket</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Ticket #</th>
+                                        <th>Subject</th>
+                                        <th>Category</th>
+                                        <th>Status</th>
+                                        <th>Last Update</th>
+                                        <th class="text-end pe-4">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+
+                                    $sql = "SELECT t.*, c.categoryName 
+                                    FROM ticket t 
+                                    LEFT JOIN category c ON t.categoryId = c.categoryId 
+                                    WHERE t.userId = ? 
+                                    ORDER BY t.createdAt DESC";
+
+                                    $stmt = $pdo->prepare($sql);
+                                    $stmt->execute([$_SESSION['user_id']]);
+
+                                    if ($stmt->rowCount() > 0) {
+                                        while ($row = $stmt->fetch()) {
+
+                                            $statusColor = 'bg-secondary';
+                                            $badgeClass = 'bg-secondary';
+                                            if ($row['status'] == 'Pending') $badgeClass = 'bg-warning text-dark';
+                                            if ($row['status'] == 'Approved by IT') $badgeClass = 'bg-info text-dark';
+                                            if ($row['status'] == 'Processing') $badgeClass = 'bg-primary';
+                                            if ($row['status'] == 'Completed') $badgeClass = 'bg-success';
+
+                                            $rawDate = !empty($row['updatedAt']) ? $row['updatedAt'] : $row['createdAt'];
+                                            $exactDate = date("M d, Y", strtotime($row['createdAt']));
+                                            $aging = timeAgo($row['createdAt']);
+
+                                            echo "<tr>";
+                                            echo "<td class='ps-4 fw-bold text-muted'>#" . $row['ticketId'] . "</td>";
+
+                                            echo "<td>" . htmlspecialchars(substr($row['subject'], 0, 40)) . "...</td>";
+
+                                            echo "<td>" . htmlspecialchars($row['categoryName'] ?? 'General') . "</td>";
+
+                                            echo "<td><span class='badge rounded-pill " . $badgeClass . "'>" . $row['status'] . "</span></td>";
+
+                                            echo "<td>
+                                            <span class='d-block'>" . $exactDate . "</span>
+                                            <span class='badge bg-light border text-dark mt-1'><i class='bi bi-clock me-1'></i>" . $aging . "</span>
+                                            </td>";
+
+                                            echo "<td class='text-end pe-4'>";
+
+                                            echo "<a href='view_ticket.php?id=" . $row['ticketId'] . "' class='btn btn-sm btn-outline-success me-1'>View</a>";
+
+                                            if ($row['status'] == 'Pending') {
+                                                echo "<a href='edit_ticket.php?id=" . $row['ticketId'] . "' class='btn btn-sm btn-outline-primary me-1'>Edit</a>";
+
+                                                echo "<a href='delete_ticket.php?id=" . $row['ticketId'] . "' 
+                                                class='btn btn-sm btn-outline-danger' 
+                                                onclick='return confirm(\"Are you sure you want to delete this ticket? This cannot be undone.\")'>
+                                                Delete
+                                            </a>";
+                                            }
+
+                                            echo "</td>";
+                                            echo "</tr>";
+                                        }
+                                    } else {
+                                        echo "<tr><td colspan='6' class='text-center py-4 text-muted'>No tickets found. Click 'New Ticket' to start!</td></tr>";
+                                    }
+                                    ?>
+                                </tbody>
+                            </table>
                         </div>
                         <h1 class="display-3 fw-bold mt-2"><?php echo $stats['r'] ?? 0; ?></h1>
                     </div>
@@ -114,5 +200,49 @@ $stats = $statStmt->fetch();
 </div> 
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const ctx = document.getElementById('myTicketChart').getContext('2d');
+        const myTicketChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Pending', 'Processing', 'Resolved'],
+                datasets: [{
+                    label: 'Tickets',
+                    data: [
+                        <?php echo $pendingCount; ?>,
+                        <?php echo $processingCount; ?>,
+                        <?php echo $completedCount; ?>
+                    ],
+                    backgroundColor: [
+                        'rgba(255, 193, 7, 0.7)', // Yellow
+                        'rgba(13, 202, 240, 0.7)', // Blue
+                        'rgba(26, 77, 46, 0.8)' // DepEd Dark Green
+                    ],
+                    borderColor: [
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(13, 202, 240, 1)',
+                        'rgba(26, 77, 46, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 </html>
